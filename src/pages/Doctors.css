@@ -1,0 +1,26 @@
+/* // src/pages/Doctors.css */
+.doctors-page {
+  padding: 0;
+}
+
+.doctors-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.doctors-header h1 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #2d3748;
+}
+
+@media (max-width: 768px) {
+  .doctors-header {
+    flex-direction: column;
+    gap: 20px;
+    align-items: stretch;
+  }
+}
+

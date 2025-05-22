@@ -1,0 +1,25 @@
+/* // src/components/layout/Layout.css */
+.layout {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #e8f4f8 0%, #f0f8ff 100%);
+}
+
+.layout-content {
+  display: flex;
+  padding-top: 70px;
+}
+
+.main-content {
+  flex: 1;
+  padding: 30px;
+  margin-left: 250px;
+  transition: margin-left 0.3s ease;
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 0;
+    padding: 20px 15px;
+  }
+}
+

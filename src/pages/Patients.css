@@ -1,0 +1,26 @@
+/* // src/pages/Patients.css */
+.patients-page {
+  padding: 0;
+}
+
+.patients-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.patients-header h1 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #2d3748;
+}
+
+@media (max-width: 768px) {
+  .patients-header {
+    flex-direction: column;
+    gap: 20px;
+    align-items: stretch;
+  }
+}
+

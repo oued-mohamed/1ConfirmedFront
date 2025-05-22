@@ -1,0 +1,37 @@
+/* // src/pages/Messaging.css */
+.messaging-page {
+  padding: 0;
+}
+
+.messaging-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.messaging-header h1 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #2d3748;
+}
+
+.messaging-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 30px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.messaging-content {
+  margin-top: 20px;
+}
+
+@media (max-width: 768px) {
+  .messaging-header {
+    flex-direction: column;
+    gap: 20px;
+    align-items: stretch;
+  }
+}
+
