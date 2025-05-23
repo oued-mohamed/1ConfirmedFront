@@ -1,8 +1,25 @@
 // src/services/api.js - FINAL VERSION with complete error handling
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
-// DEVELOPMENT MODE FLAG - Set this to true if you want to skip all API calls and use mock data
+// Determine API URL based on environment
+const getApiUrl = () => {
+  // If running on localhost (development)
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:5000/api';
+  }
+  
+  // If deployed (production) - use Railway backend
+  return 'https://1confirmedbackend-production.up.railway.app/api';
+};
+
+const API_BASE_URL = getApiUrl();
+
+// Always use real backend now that we have it deployed
 const DEVELOPMENT_MODE = false;
+
+console.log('API Service Configuration:');
+console.log('- Current hostname:', window.location.hostname);
+console.log('- API Base URL:', API_BASE_URL);
+console.log('- Development Mode:', DEVELOPMENT_MODE);
 
 // Track known endpoints that don't exist in the backend yet
 const unavailableEndpoints = [
@@ -130,7 +147,7 @@ class ApiService {
     }
   }
 
-  // Test connection method - FIXED
+  // Test connection method - UPDATED for Railway
   async testConnection() {
     if (DEVELOPMENT_MODE) {
       console.log('Development mode: Skipping connection test');
@@ -138,31 +155,25 @@ class ApiService {
     }
     
     try {
-      // Try multiple health check endpoints
-     const healthUrls = [
-  `${this.baseURL}/health`  // This will be: http://localhost:5000/api/health
-];
-
-      for (const url of healthUrls) {
-        try {
-          console.log(`Testing connection to: ${url}`);
-          const response = await fetch(url, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
-          });
-          
-          if (response.ok) {
-            console.log(`Connection successful to: ${url}`);
-            return { success: true, message: 'Backend is running', url };
-          }
-        } catch (e) {
-          console.log(`Failed to connect to: ${url}`, e.message);
-          continue;
-        }
-      }
+      // Use the correct health endpoint for our environment
+      const url = `${this.baseURL}/health`;
       
-      throw new Error('Backend server is not running on any expected endpoint');
+      console.log(`Testing connection to: ${url}`);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`Connection successful to: ${url}`);
+        console.log('Backend response:', data);
+        return { success: true, message: 'Backend is running', url, data };
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
     } catch (error) {
+      console.error('Connection test failed:', error);
       throw new Error(`Cannot connect to backend: ${error.message}`);
     }
   }
