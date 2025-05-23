@@ -78,9 +78,9 @@ const Login = () => {
           </form>
           
           <div className="login-footer">
-            <a href="#forgot">Forgot Password?</a>
+            <Link to={"/ForgotPassword"}>Forgot Password?</Link>
             <span>•</span>
-            <a href="#register">Create Account</a>
+            <Link to={"/register"}>Create Account</Link>
           </div>
         </div>
       </div>

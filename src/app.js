@@ -12,6 +12,10 @@ import Doctors from './pages/Doctors';
 import Messaging from './pages/Messaging';
 import Settings from './pages/Settings';
 import ProtectedRoute from './components/common/ProtectedRoute';
+import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+
+
 
 function App() {
   return (
@@ -20,6 +24,9 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/Register" element={<Register />} />
+          <Route path="/ForgotPassword" element={<ForgotPassword />} />
+
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <Layout>

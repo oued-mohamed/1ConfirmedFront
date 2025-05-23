@@ -1,5 +1,3 @@
-
-
 // src/components/doctors/DoctorForm.js
 import React, { useState } from 'react';
 
@@ -15,11 +13,22 @@ const DoctorForm = ({ onClose, onSave }) => {
     workingHours: '',
     notes: ''
   });
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    
     console.log('Saving doctor:', formData);
-    onSave();
+    
+    // Call the onSave function passed from parent component with the form data
+    if (onSave) {
+      onSave(formData);
+    } else {
+      // If no onSave function was provided, just close the form
+      onClose();
+    }
   };
 
   const handleChange = (e) => {
@@ -34,7 +43,7 @@ const DoctorForm = ({ onClose, onSave }) => {
       <div className="modal-content">
         <div className="modal-header">
           <h3>👨‍⚕️ New Doctor</h3>
-          <button className="close-btn" onClick={onClose}>✕</button>
+          <button className="close-btn" onClick={onClose} disabled={isSubmitting}>✕</button>
         </div>
         
         <form onSubmit={handleSubmit} className="doctor-form">
@@ -48,6 +57,7 @@ const DoctorForm = ({ onClose, onSave }) => {
                 value={formData.firstName}
                 onChange={handleChange}
                 required
+                disabled={isSubmitting}
               />
             </div>
             <div className="form-group">
@@ -59,6 +69,7 @@ const DoctorForm = ({ onClose, onSave }) => {
                 value={formData.lastName}
                 onChange={handleChange}
                 required
+                disabled={isSubmitting}
               />
             </div>
           </div>
@@ -74,6 +85,7 @@ const DoctorForm = ({ onClose, onSave }) => {
                 onChange={handleChange}
                 placeholder="e.g., Cardiology"
                 required
+                disabled={isSubmitting}
               />
             </div>
             <div className="form-group">
@@ -84,6 +96,7 @@ const DoctorForm = ({ onClose, onSave }) => {
                 value={formData.department}
                 onChange={handleChange}
                 required
+                disabled={isSubmitting}
               >
                 <option value="">Select Department</option>
                 <option value="Cardiology">Cardiology</option>
@@ -106,6 +119,7 @@ const DoctorForm = ({ onClose, onSave }) => {
                 onChange={handleChange}
                 placeholder="+1234567890"
                 required
+                disabled={isSubmitting}
               />
             </div>
             <div className="form-group">
@@ -118,6 +132,7 @@ const DoctorForm = ({ onClose, onSave }) => {
                 onChange={handleChange}
                 placeholder="doctor@hospital.com"
                 required
+                disabled={isSubmitting}
               />
             </div>
           </div>
@@ -132,6 +147,7 @@ const DoctorForm = ({ onClose, onSave }) => {
                 value={formData.licenseNumber}
                 onChange={handleChange}
                 placeholder="Medical license number"
+                disabled={isSubmitting}
               />
             </div>
             <div className="form-group">
@@ -143,6 +159,7 @@ const DoctorForm = ({ onClose, onSave }) => {
                 value={formData.workingHours}
                 onChange={handleChange}
                 placeholder="e.g., 9:00 AM - 5:00 PM"
+                disabled={isSubmitting}
               />
             </div>
           </div>
@@ -156,15 +173,25 @@ const DoctorForm = ({ onClose, onSave }) => {
               value={formData.notes}
               onChange={handleChange}
               placeholder="Additional notes..."
+              disabled={isSubmitting}
             />
           </div>
           
           <div className="form-actions">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>
+            <button 
+              type="button" 
+              className="btn btn-secondary" 
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary">
-              👨‍⚕️ Add Doctor
+            <button 
+              type="submit" 
+              className="btn btn-primary"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? '⏳ Processing...' : '👨‍⚕️ Add Doctor'}
             </button>
           </div>
         </form>
@@ -174,4 +201,3 @@ const DoctorForm = ({ onClose, onSave }) => {
 };
 
 export default DoctorForm;
-

@@ -1,52 +1,282 @@
-// src/services/api.js
+// src/services/api.js - FIXED VERSION with proper export
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 class ApiService {
   constructor() {
     this.baseURL = API_BASE_URL;
+    this.token = localStorage.getItem('healthping_token');
+  }
+
+  // Set authorization token
+  setToken(token) {
+    this.token = token;
+    if (token) {
+      localStorage.setItem('healthping_token', token);
+    } else {
+      localStorage.removeItem('healthping_token');
+    }
+  }
+
+  // Get authorization headers
+  getAuthHeaders(includeAuth = true) {
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (includeAuth && this.token) {
+      headers.Authorization = `Bearer ${this.token}`;
+    }
+    
+    return headers;
   }
 
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
+
+    // Don't include auth header for login/register endpoints
+    const isAuthEndpoint = endpoint.includes('/auth/login') || endpoint.includes('/auth/register');
+    
     const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers: this.getAuthHeaders(!isAuthEndpoint),
       ...options,
     };
 
-    // Add auth token if available
-    const token = localStorage.getItem('healthping_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    console.log('API Request:', {
+      url,
+      method: config.method || 'GET',
+      headers: config.headers,
+      body: config.body
+    });
 
     try {
       const response = await fetch(url, config);
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      console.log('API Response Status:', response.status);
+
+      // Handle different response types
+      if (response.status === 401 && !isAuthEndpoint) {
+        // Only redirect to login for protected routes, not login itself
+        this.setToken(null);
+        window.location.href = '/login';
+        throw new Error('Session expired. Please login again.');
       }
-      
-      return await response.json();
+
+      if (!response.ok) {
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (e) {
+          errorData = { message: `HTTP ${response.status}: ${response.statusText}` };
+        }
+        
+        console.error('API Error Response:', errorData);
+        throw new Error(errorData.error || errorData.message || `Request failed with status ${response.status}`);
+      }
+
+      // Handle empty responses
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const data = await response.json();
+        console.log('API Response Data:', data);
+        return data;
+      }
+
+      return { success: true };
     } catch (error) {
       console.error('API request failed:', error);
+      
+      // Network errors
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        throw new Error('Network error. Please check your internet connection and try again.');
+      }
+      
       throw error;
     }
   }
 
-  // Authentication
+  // Test connection method - FIXED
+  async testConnection() {
+    try {
+      // Try multiple health check endpoints
+      const healthUrls = [
+        `${this.baseURL.replace('/api', '')}/health`,
+        `${this.baseURL}/health`,
+        `http://localhost:5000/health`,
+        `http://localhost:5000/api/health`
+      ];
+
+      for (const url of healthUrls) {
+        try {
+          console.log(`Testing connection to: ${url}`);
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+          });
+          
+          if (response.ok) {
+            console.log(`Connection successful to: ${url}`);
+            return { success: true, message: 'Backend is running', url };
+          }
+        } catch (e) {
+          console.log(`Failed to connect to: ${url}`, e.message);
+          continue;
+        }
+      }
+      
+      throw new Error('Backend server is not running on any expected endpoint');
+    } catch (error) {
+      throw new Error(`Cannot connect to backend: ${error.message}`);
+    }
+  }
+
+  // Authentication endpoints
   async login(email, password) {
-    return this.request('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
+    try {
+      const response = await this.request('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+      
+      // Handle different response formats
+      if (response.token) {
+        this.setToken(response.token);
+      } else if (response.data && response.data.token) {
+        this.setToken(response.data.token);
+      }
+      
+      return response;
+    } catch (error) {
+      // Don't redirect on login errors
+      throw error;
+    }
+  }
+
+  // Register function
+  async register(userData) {
+    console.log('ApiService: Real register called with:', userData);
+    
+    try {
+      const response = await this.request('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(userData),
+      });
+      
+      console.log('ApiService: Real register response:', response);
+      
+      // Handle different response formats
+      if (response.token) {
+        this.setToken(response.token);
+      } else if (response.data && response.data.token) {
+        this.setToken(response.data.token);
+      }
+      
+      return response;
+    } catch (error) {
+      console.error('ApiService: Real register error:', error);
+      throw error;
+    }
+  }
+
+  // Mock register for development
+  async mockRegister(userData) {
+    console.log('ApiService: Mock register called with:', userData);
+    
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // Mock user data
+    const mockUser = {
+      id: Date.now(),
+      name: `${userData.firstName} ${userData.lastName}`,
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      email: userData.email,
+      role: userData.role,
+      phone: userData.phone,
+      avatar: userData.role === 'doctor' ? '👨‍⚕️' : userData.role === 'nurse' ? '👩‍⚕️' : userData.role === 'admin' ? '👨‍💼' : '👤',
+      specialization: userData.specialization || null,
+      licenseNumber: userData.licenseNumber || null,
+      isActive: true,
+      emailVerified: true,
+      whatsappOptIn: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    const mockToken = 'mock-jwt-token-' + Date.now();
+    this.setToken(mockToken);
+    
+    console.log('ApiService: Mock register returning:', { user: mockUser, token: mockToken });
+    
+    return {
+      success: true,
+      token: mockToken,
+      user: mockUser,
+      message: 'Registration successful (Demo Mode)'
+    };
+  }
+
+  // Mock login for development
+  async mockLogin(email, password) {
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Mock user data
+    const mockUser = {
+      id: 1,
+      name: 'Dr. Sarah Johnson',
+      email: email,
+      role: 'doctor',
+      avatar: '👩‍⚕️'
+    };
+    
+    const mockToken = 'mock-jwt-token-' + Date.now();
+    this.setToken(mockToken);
+    
+    return {
+      success: true,
+      token: mockToken,
+      user: mockUser
+    };
   }
 
   async logout() {
-    return this.request('/auth/logout', {
+    try {
+      await this.request('/auth/logout', { method: 'POST' });
+    } catch (error) {
+      // Ignore logout errors, just clear token
+      console.warn('Logout request failed:', error);
+    } finally {
+      this.setToken(null);
+    }
+  }
+
+  // Get current user
+  async getCurrentUser() {
+    return this.request('/auth/me');
+  }
+
+  // Update profile
+  async updateProfile(userData) {
+    return this.request('/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(userData),
+    });
+  }
+
+  // Forgot password
+  async forgotPassword(email) {
+    return this.request('/auth/forgot-password', {
       method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  // Reset password
+  async resetPassword(token, newPassword) {
+    return this.request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password: newPassword }),
     });
   }
 
@@ -76,6 +306,13 @@ class ApiService {
     });
   }
 
+  // Send appointment reminder
+  async sendAppointmentReminder(appointmentId) {
+    return this.request(`/whatsapp/send-reminder/${appointmentId}`, {
+      method: 'POST',
+    });
+  }
+
   // Patients
   async getPatients(params = {}) {
     const queryString = new URLSearchParams(params).toString();
@@ -96,6 +333,12 @@ class ApiService {
     });
   }
 
+  async deletePatient(id) {
+    return this.request(`/patients/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Doctors
   async getDoctors(params = {}) {
     const queryString = new URLSearchParams(params).toString();
@@ -109,15 +352,42 @@ class ApiService {
     });
   }
 
+  async updateDoctor(id, doctorData) {
+    return this.request(`/doctors/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(doctorData),
+    });
+  }
+
+  async deleteDoctor(id) {
+    return this.request(`/doctors/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Messages
-  async getMessageTemplates() {
-    return this.request('/messages/templates');
+  async getMessageTemplates(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.request(`/messages/templates?${queryString}`);
   }
 
   async createMessageTemplate(templateData) {
     return this.request('/messages/templates', {
       method: 'POST',
       body: JSON.stringify(templateData),
+    });
+  }
+
+  async updateMessageTemplate(id, templateData) {
+    return this.request(`/messages/templates/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(templateData),
+    });
+  }
+
+  async deleteMessageTemplate(id) {
+    return this.request(`/messages/templates/${id}`, {
+      method: 'DELETE',
     });
   }
 
@@ -142,7 +412,36 @@ class ApiService {
     const queryString = new URLSearchParams(params).toString();
     return this.request(`/analytics/appointments?${queryString}`);
   }
+
+  async getResponseRates(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.request(`/analytics/response-rates?${queryString}`);
+  }
+
+  async getPatientEngagement(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.request(`/analytics/patient-engagement?${queryString}`);
+  }
+
+  // Settings
+  async getSettings() {
+    return this.request('/settings');
+  }
+
+  async updateSettings(settingsData) {
+    return this.request('/settings', {
+      method: 'PUT',
+      body: JSON.stringify(settingsData),
+    });
+  }
+
+  async testWhatsAppConnection() {
+    return this.request('/settings/test-whatsapp', {
+      method: 'POST',
+    });
+  }
 }
 
-export default new ApiService();
-
+// FIXED: Proper export - Create instance and export as default
+const apiService = new ApiService();
+export default apiService;

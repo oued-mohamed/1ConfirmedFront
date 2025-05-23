@@ -11,11 +11,22 @@ const AppointmentForm = ({ onClose, onSave }) => {
     time: '',
     notes: ''
   });
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    
     console.log('Saving appointment:', formData);
-    onSave();
+    
+    // Call the onSave function passed from parent component with the form data
+    if (onSave) {
+      onSave(formData);
+    } else {
+      // If no onSave function was provided, just close the form
+      onClose();
+    }
   };
 
   const handleChange = (e) => {
@@ -30,7 +41,7 @@ const AppointmentForm = ({ onClose, onSave }) => {
       <div className="modal-content">
         <div className="modal-header">
           <h3>📅 New Appointment</h3>
-          <button className="close-btn" onClick={onClose}>✕</button>
+          <button className="close-btn" onClick={onClose} disabled={isSubmitting}>✕</button>
         </div>
         
         <form onSubmit={handleSubmit} className="appointment-form">
@@ -44,6 +55,7 @@ const AppointmentForm = ({ onClose, onSave }) => {
                 value={formData.patientName}
                 onChange={handleChange}
                 required
+                disabled={isSubmitting}
               />
             </div>
             <div className="form-group">
@@ -56,6 +68,7 @@ const AppointmentForm = ({ onClose, onSave }) => {
                 onChange={handleChange}
                 placeholder="+1234567890"
                 required
+                disabled={isSubmitting}
               />
             </div>
           </div>
@@ -69,6 +82,7 @@ const AppointmentForm = ({ onClose, onSave }) => {
                 value={formData.doctor}
                 onChange={handleChange}
                 required
+                disabled={isSubmitting}
               >
                 <option value="">Select Doctor</option>
                 <option value="Dr. Johnson">Dr. Johnson</option>
@@ -85,6 +99,7 @@ const AppointmentForm = ({ onClose, onSave }) => {
                 value={formData.department}
                 onChange={handleChange}
                 required
+                disabled={isSubmitting}
               >
                 <option value="">Select Department</option>
                 <option value="Cardiology">Cardiology</option>
@@ -105,6 +120,7 @@ const AppointmentForm = ({ onClose, onSave }) => {
                 value={formData.date}
                 onChange={handleChange}
                 required
+                disabled={isSubmitting}
               />
             </div>
             <div className="form-group">
@@ -116,6 +132,7 @@ const AppointmentForm = ({ onClose, onSave }) => {
                 value={formData.time}
                 onChange={handleChange}
                 required
+                disabled={isSubmitting}
               />
             </div>
           </div>
@@ -129,15 +146,25 @@ const AppointmentForm = ({ onClose, onSave }) => {
               value={formData.notes}
               onChange={handleChange}
               placeholder="Additional notes..."
+              disabled={isSubmitting}
             />
           </div>
           
           <div className="form-actions">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>
+            <button 
+              type="button" 
+              className="btn btn-secondary" 
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary">
-              📅 Schedule Appointment
+            <button 
+              type="submit" 
+              className="btn btn-primary"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? '⏳ Processing...' : '📅 Schedule Appointment'}
             </button>
           </div>
         </form>
@@ -147,4 +174,3 @@ const AppointmentForm = ({ onClose, onSave }) => {
 };
 
 export default AppointmentForm;
-

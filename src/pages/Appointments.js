@@ -8,6 +8,32 @@ import './Appointments.css';
 const Appointments = () => {
   const [activeTab, setActiveTab] = useState('list');
   const [showForm, setShowForm] = useState(false);
+  const [newAppointments, setNewAppointments] = useState([]);
+
+  // Handle saving a new appointment
+  const handleSaveAppointment = (appointmentData) => {
+    console.log('Parent component received new appointment:', appointmentData);
+    
+    // Create a new appointment object with required fields
+    const newAppointment = {
+      id: Date.now(), // Generate a unique ID
+      patient: appointmentData.patientName,
+      phone: appointmentData.phone,
+      doctor: appointmentData.doctor,
+      department: appointmentData.department,
+      date: appointmentData.date,
+      time: appointmentData.time,
+      notes: appointmentData.notes,
+      status: 'pending',
+      whatsappSent: false
+    };
+    
+    // Add the new appointment to our state
+    setNewAppointments(prevAppointments => [...prevAppointments, newAppointment]);
+    
+    // Close the form
+    setShowForm(false);
+  };
 
   return (
     <div className="appointments-page">
@@ -37,14 +63,14 @@ const Appointments = () => {
       </div>
 
       <div className="appointments-content">
-        {activeTab === 'list' && <AppointmentList />}
-        {activeTab === 'calendar' && <AppointmentCalendar />}
+        {activeTab === 'list' && <AppointmentList newAppointments={newAppointments} />}
+        {activeTab === 'calendar' && <AppointmentCalendar newAppointments={newAppointments} />}
       </div>
 
       {showForm && (
         <AppointmentForm 
           onClose={() => setShowForm(false)}
-          onSave={() => setShowForm(false)}
+          onSave={handleSaveAppointment}
         />
       )}
     </div>
@@ -52,4 +78,3 @@ const Appointments = () => {
 };
 
 export default Appointments;
-

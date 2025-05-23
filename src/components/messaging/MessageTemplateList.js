@@ -1,77 +1,8 @@
-// src/components/messaging/MessageTemplateList.js
+// src/components/messaging/MessageTemplateList.js - FIXED VERSION
 import React, { useState } from 'react';
 import './MessageTemplateList.css';
 
-const MessageTemplateList = () => {
-  const [templates] = useState([
-    {
-      id: 1,
-      name: 'Appointment Reminder',
-      category: 'Reminder',
-      content: 'Hi {{patient_name}}, this is a reminder about your appointment with {{doctor_name}} on {{date}} at {{time}}. Please confirm by replying YES.',
-      variables: ['patient_name', 'doctor_name', 'date', 'time'],
-      status: 'active',
-      lastUsed: '2024-01-15',
-      usageCount: 156,
-      responseRate: '94%'
-    },
-    {
-      id: 2,
-      name: 'Appointment Confirmation',
-      category: 'Confirmation',
-      content: 'Dear {{patient_name}}, your appointment with {{doctor_name}} has been confirmed for {{date}} at {{time}}. Location: {{location}}',
-      variables: ['patient_name', 'doctor_name', 'date', 'time', 'location'],
-      status: 'active',
-      lastUsed: '2024-01-14',
-      usageCount: 89,
-      responseRate: '98%'
-    },
-    {
-      id: 3,
-      name: 'Cancellation Notice',
-      category: 'Cancellation',
-      content: 'Hi {{patient_name}}, we regret to inform you that your appointment on {{date}} has been cancelled. Please call us to reschedule.',
-      variables: ['patient_name', 'date'],
-      status: 'draft',
-      lastUsed: '2024-01-10',
-      usageCount: 23,
-      responseRate: '76%'
-    },
-    {
-      id: 4,
-      name: 'Follow-up Reminder',
-      category: 'Follow-up',
-      content: 'Hello {{patient_name}}, Dr. {{doctor_name}} recommends a follow-up appointment. Please call us at {{phone}} to schedule.',
-      variables: ['patient_name', 'doctor_name', 'phone'],
-      status: 'active',
-      lastUsed: '2024-01-12',
-      usageCount: 67,
-      responseRate: '85%'
-    },
-    {
-      id: 5,
-      name: 'Prescription Ready',
-      category: 'Notification',
-      content: 'Your prescription is ready for pickup at {{pharmacy_name}}. Pickup hours: {{hours}}. Questions? Call {{phone}}.',
-      variables: ['pharmacy_name', 'hours', 'phone'],
-      status: 'active',
-      lastUsed: '2024-01-13',
-      usageCount: 134,
-      responseRate: '92%'
-    },
-    {
-      id: 6,
-      name: 'Test Results Available',
-      category: 'Notification',
-      content: 'Hi {{patient_name}}, your test results are now available. Please log into your patient portal or call us at {{phone}}.',
-      variables: ['patient_name', 'phone'],
-      status: 'active',
-      lastUsed: '2024-01-11',
-      usageCount: 45,
-      responseRate: '88%'
-    }
-  ]);
-
+const MessageTemplateList = ({ templates = [], onTemplateDeleted }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
@@ -110,7 +41,10 @@ const MessageTemplateList = () => {
 
   const handleDeleteTemplate = (templateId) => {
     if (window.confirm('Are you sure you want to delete this template? This action cannot be undone.')) {
-      alert(`Template ID ${templateId} would be deleted`);
+      // Call the parent component's delete handler
+      if (onTemplateDeleted) {
+        onTemplateDeleted(templateId);
+      }
     }
   };
 
@@ -214,7 +148,7 @@ const MessageTemplateList = () => {
             <div className="template-variables">
               <strong>Variables:</strong>
               <div className="variables-list">
-                {template.variables.map(variable => (
+                {template.variables && template.variables.map(variable => (
                   <span key={variable} className="variable-tag">
                     {variable}
                   </span>
@@ -225,17 +159,17 @@ const MessageTemplateList = () => {
             <div className="template-stats">
               <div className="stat-item">
                 <span className="stat-label">Used:</span>
-                <span className="stat-value">{template.usageCount} times</span>
+                <span className="stat-value">{template.usageCount || 0} times</span>
               </div>
               <div className="stat-item">
                 <span className="stat-label">Response Rate:</span>
-                <span className="stat-value response-rate">{template.responseRate}</span>
+                <span className="stat-value response-rate">{template.responseRate || '0%'}</span>
               </div>
             </div>
             
             <div className="template-meta">
               <span style={{ fontSize: '12px', color: '#718096' }}>
-                Last used: {new Date(template.lastUsed).toLocaleDateString()}
+                Last used: {template.lastUsed ? new Date(template.lastUsed).toLocaleDateString() : 'Never'}
               </span>
             </div>
             
@@ -285,8 +219,8 @@ const MessageTemplateList = () => {
           <div className="empty-icon">📝</div>
           <h3>No templates found</h3>
           <p>Try adjusting your search criteria or create a new template.</p>
-          <button className="btn btn-primary">
-            ➕ Create Template
+          <button className="btn btn-primary" onClick={() => window.location.reload()}>
+            🔄 Refresh Templates
           </button>
         </div>
       )}

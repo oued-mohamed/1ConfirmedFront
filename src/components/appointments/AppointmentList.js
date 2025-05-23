@@ -1,8 +1,9 @@
 // src/components/appointments/AppointmentList.js
 import React, { useState } from 'react';
 
-const AppointmentList = () => {
-  const [appointments] = useState([
+const AppointmentList = ({ newAppointments = [] }) => {
+  // Original appointments (preserved)
+  const originalAppointments = [
     {
       id: 1,
       patient: 'John Smith',
@@ -36,7 +37,21 @@ const AppointmentList = () => {
       status: 'confirmed',
       whatsappSent: true
     }
-  ]);
+  ];
+
+  // Combine original appointments with new appointments
+  const allAppointments = [...originalAppointments, ...newAppointments];
+  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All Status');
+
+  // Filter appointments based on search and status
+  const filteredAppointments = allAppointments.filter(appointment => {
+    const nameMatch = appointment.patient.toLowerCase().includes(searchTerm.toLowerCase());
+    const statusMatch = statusFilter === 'All Status' || appointment.status === statusFilter.toLowerCase();
+    
+    return nameMatch && statusMatch;
+  });
 
   const handleSendReminder = (appointmentId) => {
     alert(`Sending WhatsApp reminder for appointment ${appointmentId}`);
@@ -47,7 +62,12 @@ const AppointmentList = () => {
       <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3>All Appointments</h3>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <select className="form-select" style={{ width: 'auto' }}>
+          <select 
+            className="form-select" 
+            style={{ width: 'auto' }}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
             <option>All Status</option>
             <option>Confirmed</option>
             <option>Pending</option>
@@ -58,6 +78,8 @@ const AppointmentList = () => {
             className="form-input" 
             placeholder="Search patients..."
             style={{ width: '200px' }}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </div>
@@ -75,7 +97,7 @@ const AppointmentList = () => {
           </tr>
         </thead>
         <tbody>
-          {appointments.map(appointment => (
+          {filteredAppointments.map(appointment => (
             <tr key={appointment.id}>
               <td>
                 <div>
@@ -93,7 +115,7 @@ const AppointmentList = () => {
               </td>
               <td>
                 <span className={`status-badge status-${appointment.status}`}>
-                  {appointment.status}
+                  {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
                 </span>
               </td>
               <td>
@@ -124,9 +146,16 @@ const AppointmentList = () => {
           ))}
         </tbody>
       </table>
+      
+      {filteredAppointments.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '30px' }}>
+          <div style={{ fontSize: '48px', marginBottom: '10px' }}>📅</div>
+          <h3>No appointments found</h3>
+          <p>Try adjusting your search criteria or add a new appointment.</p>
+        </div>
+      )}
     </div>
   );
 };
 
 export default AppointmentList;
-

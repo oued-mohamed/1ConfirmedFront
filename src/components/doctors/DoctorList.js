@@ -1,8 +1,9 @@
 // src/components/doctors/DoctorList.js
 import React, { useState } from 'react';
 
-const DoctorList = () => {
-  const [doctors] = useState([
+const DoctorList = ({ newDoctors = [] }) => {
+  // Original doctors (preserved)
+  const originalDoctors = [
     {
       id: 1,
       name: 'Dr. Sarah Johnson',
@@ -33,25 +34,46 @@ const DoctorList = () => {
       workingHours: '8:00 AM - 4:00 PM',
       status: 'on_leave'
     }
-  ]);
+  ];
+
+  // Combine original doctors with new doctors
+  const allDoctors = [...originalDoctors, ...newDoctors];
+  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('');
+
+  // Filter doctors based on search and department
+  const filteredDoctors = allDoctors.filter(doctor => {
+    const nameMatch = doctor.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const departmentMatch = !departmentFilter || departmentFilter === 'All Departments' || doctor.department === departmentFilter;
+    return nameMatch && departmentMatch;
+  });
 
   return (
     <div className="card">
       <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3>All Doctors</h3>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <select className="form-select" style={{ width: 'auto' }}>
+          <select 
+            className="form-select" 
+            style={{ width: 'auto' }}
+            value={departmentFilter}
+            onChange={(e) => setDepartmentFilter(e.target.value)}
+          >
             <option>All Departments</option>
             <option>Cardiology</option>
             <option>Dermatology</option>
             <option>Orthopedics</option>
             <option>Pediatrics</option>
+            <option>General Medicine</option>
           </select>
           <input 
             type="text" 
             className="form-input" 
             placeholder="Search doctors..."
             style={{ width: '200px' }}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </div>
@@ -68,7 +90,7 @@ const DoctorList = () => {
           </tr>
         </thead>
         <tbody>
-          {doctors.map(doctor => (
+          {filteredDoctors.map(doctor => (
             <tr key={doctor.id}>
               <td>
                 <div style={{ fontWeight: '600' }}>{doctor.name}</div>
@@ -107,6 +129,14 @@ const DoctorList = () => {
           ))}
         </tbody>
       </table>
+      
+      {filteredDoctors.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '30px' }}>
+          <div style={{ fontSize: '48px', marginBottom: '10px' }}>👨‍⚕️</div>
+          <h3>No doctors found</h3>
+          <p>Try adjusting your search criteria or add a new doctor.</p>
+        </div>
+      )}
     </div>
   );
 };

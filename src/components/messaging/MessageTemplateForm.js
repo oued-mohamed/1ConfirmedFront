@@ -1,4 +1,4 @@
-// src/components/messaging/MessageTemplateForm.js
+// src/components/messaging/MessageTemplateForm.js - FIXED VERSION
 import React, { useState } from 'react';
 
 const MessageTemplateForm = ({ onClose, onSave }) => {
@@ -10,11 +10,21 @@ const MessageTemplateForm = ({ onClose, onSave }) => {
   });
 
   const [newVariable, setNewVariable] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    
     console.log('Saving template:', formData);
-    onSave();
+    
+    // Call the onSave function passed from parent component
+    if (onSave) {
+      onSave(formData);
+    } else {
+      // If no onSave function was provided, just close the form
+      onClose();
+    }
   };
 
   const handleChange = (e) => {
@@ -59,7 +69,7 @@ const MessageTemplateForm = ({ onClose, onSave }) => {
       <div className="modal-content" style={{ maxWidth: '600px' }}>
         <div className="modal-header">
           <h3>💬 New Message Template</h3>
-          <button className="close-btn" onClick={onClose}>✕</button>
+          <button className="close-btn" onClick={onClose} disabled={isSubmitting}>✕</button>
         </div>
         
         <form onSubmit={handleSubmit} className="template-form">
@@ -74,6 +84,7 @@ const MessageTemplateForm = ({ onClose, onSave }) => {
                 onChange={handleChange}
                 placeholder="e.g., Appointment Reminder"
                 required
+                disabled={isSubmitting}
               />
             </div>
             <div className="form-group">
@@ -84,12 +95,14 @@ const MessageTemplateForm = ({ onClose, onSave }) => {
                 value={formData.category}
                 onChange={handleChange}
                 required
+                disabled={isSubmitting}
               >
                 <option value="">Select Category</option>
                 <option value="Reminder">Reminder</option>
                 <option value="Confirmation">Confirmation</option>
                 <option value="Cancellation">Cancellation</option>
                 <option value="Follow-up">Follow-up</option>
+                <option value="Notification">Notification</option>
               </select>
             </div>
           </div>
@@ -104,6 +117,7 @@ const MessageTemplateForm = ({ onClose, onSave }) => {
               onChange={handleChange}
               placeholder="Type your message here. Use {{variable_name}} for dynamic content."
               required
+              disabled={isSubmitting}
             />
           </div>
           
@@ -117,8 +131,14 @@ const MessageTemplateForm = ({ onClose, onSave }) => {
                 onChange={(e) => setNewVariable(e.target.value)}
                 placeholder="Add variable name"
                 style={{ marginRight: '10px', flex: 1 }}
+                disabled={isSubmitting}
               />
-              <button type="button" className="btn btn-secondary" onClick={addVariable}>
+              <button 
+                type="button" 
+                className="btn btn-secondary" 
+                onClick={addVariable}
+                disabled={isSubmitting}
+              >
                 ➕ Add
               </button>
             </div>
@@ -138,6 +158,7 @@ const MessageTemplateForm = ({ onClose, onSave }) => {
                       type="button"
                       className="remove-variable"
                       onClick={() => removeVariable(variable)}
+                      disabled={isSubmitting}
                     >
                       ✕
                     </button>
@@ -148,11 +169,20 @@ const MessageTemplateForm = ({ onClose, onSave }) => {
           </div>
           
           <div className="form-actions">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>
+            <button 
+              type="button" 
+              className="btn btn-secondary" 
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
               Cancel
             </button>
-            <button type="submit" className="btn btn-whatsapp">
-              💬 Create Template
+            <button 
+              type="submit" 
+              className="btn btn-whatsapp"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? '⏳ Processing...' : '💬 Create Template'}
             </button>
           </div>
         </form>
@@ -162,4 +192,3 @@ const MessageTemplateForm = ({ onClose, onSave }) => {
 };
 
 export default MessageTemplateForm;
-

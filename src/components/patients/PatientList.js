@@ -1,8 +1,9 @@
 // src/components/patients/PatientList.js
 import React, { useState } from 'react';
 
-const PatientList = () => {
-  const [patients] = useState([
+const PatientList = ({ newPatients = [] }) => {
+  // Original patients (preserved)
+  const originalPatients = [
     {
       id: 1,
       name: 'John Smith',
@@ -33,7 +34,13 @@ const PatientList = () => {
       lastVisit: '2024-01-05',
       whatsappOptIn: false
     }
-  ]);
+  ];
+
+  // Combine original patients with new patients
+  const allPatients = [...originalPatients, ...newPatients];
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [whatsappFilter, setWhatsappFilter] = useState('All Patients');
 
   const calculateAge = (dateOfBirth) => {
     const today = new Date();
@@ -46,12 +53,32 @@ const PatientList = () => {
     return age;
   };
 
+  // Filter patients based on search and WhatsApp status
+  const filteredPatients = allPatients.filter(patient => {
+    const nameMatch = patient.name.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (whatsappFilter === 'All Patients') {
+      return nameMatch;
+    } else if (whatsappFilter === 'WhatsApp Enabled') {
+      return nameMatch && patient.whatsappOptIn;
+    } else if (whatsappFilter === 'WhatsApp Disabled') {
+      return nameMatch && !patient.whatsappOptIn;
+    }
+    
+    return nameMatch;
+  });
+
   return (
     <div className="card">
       <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3>All Patients</h3>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <select className="form-select" style={{ width: 'auto' }}>
+          <select 
+            className="form-select" 
+            style={{ width: 'auto' }}
+            value={whatsappFilter}
+            onChange={(e) => setWhatsappFilter(e.target.value)}
+          >
             <option>All Patients</option>
             <option>WhatsApp Enabled</option>
             <option>WhatsApp Disabled</option>
@@ -61,6 +88,8 @@ const PatientList = () => {
             className="form-input" 
             placeholder="Search patients..."
             style={{ width: '200px' }}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </div>
@@ -77,7 +106,7 @@ const PatientList = () => {
           </tr>
         </thead>
         <tbody>
-          {patients.map(patient => (
+          {filteredPatients.map(patient => (
             <tr key={patient.id}>
               <td>
                 <div style={{ fontWeight: '600' }}>{patient.name}</div>
@@ -122,9 +151,16 @@ const PatientList = () => {
           ))}
         </tbody>
       </table>
+      
+      {filteredPatients.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '30px' }}>
+          <div style={{ fontSize: '48px', marginBottom: '10px' }}>👤</div>
+          <h3>No patients found</h3>
+          <p>Try adjusting your search criteria or add a new patient.</p>
+        </div>
+      )}
     </div>
   );
 };
 
 export default PatientList;
-
