@@ -1,48 +1,13 @@
 // src/components/patients/PatientList.js
 import React, { useState } from 'react';
 
-const PatientList = ({ newPatients = [] }) => {
-  // Original patients (preserved)
-  const originalPatients = [
-    {
-      id: 1,
-      name: 'John Smith',
-      phone: '+1234567890',
-      email: 'john@email.com',
-      dateOfBirth: '1985-03-15',
-      gender: 'Male',
-      lastVisit: '2024-01-10',
-      whatsappOptIn: true
-    },
-    {
-      id: 2,
-      name: 'Sarah Wilson',
-      phone: '+1234567891',
-      email: 'sarah@email.com',
-      dateOfBirth: '1990-07-22',
-      gender: 'Female',
-      lastVisit: '2024-01-08',
-      whatsappOptIn: true
-    },
-    {
-      id: 3,
-      name: 'Mike Davis',
-      phone: '+1234567892',
-      email: 'mike@email.com',
-      dateOfBirth: '1978-11-03',
-      gender: 'Male',
-      lastVisit: '2024-01-05',
-      whatsappOptIn: false
-    }
-  ];
-
-  // Combine original patients with new patients
-  const allPatients = [...originalPatients, ...newPatients];
-
+const PatientList = ({ patients = [], onDelete, onUpdate, onRefresh }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [whatsappFilter, setWhatsappFilter] = useState('All Patients');
 
   const calculateAge = (dateOfBirth) => {
+    if (!dateOfBirth) return 'Unknown';
+    
     const today = new Date();
     const birthDate = new Date(dateOfBirth);
     let age = today.getFullYear() - birthDate.getFullYear();
@@ -54,8 +19,8 @@ const PatientList = ({ newPatients = [] }) => {
   };
 
   // Filter patients based on search and WhatsApp status
-  const filteredPatients = allPatients.filter(patient => {
-    const nameMatch = patient.name.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredPatients = patients.filter(patient => {
+    const nameMatch = patient.name?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
     
     if (whatsappFilter === 'All Patients') {
       return nameMatch;
@@ -68,10 +33,32 @@ const PatientList = ({ newPatients = [] }) => {
     return nameMatch;
   });
 
+  const handleDelete = (patientId) => {
+    if (onDelete) {
+      onDelete(patientId);
+    }
+  };
+
+  const handleEdit = (patient) => {
+    // For now, just show patient info - you can implement edit form later
+    alert(`Edit functionality for ${patient.name} - Coming soon!`);
+  };
+
   return (
     <div className="card">
       <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3>All Patients</h3>
+        <div>
+          <h3>All Patients ({patients.length})</h3>
+          {patients.length > 0 && (
+            <button 
+              className="btn btn-secondary"
+              onClick={onRefresh}
+              style={{ fontSize: '12px', padding: '4px 8px', marginTop: '5px' }}
+            >
+              🔄 Refresh
+            </button>
+          )}
+        </div>
         <div style={{ display: 'flex', gap: '10px' }}>
           <select 
             className="form-select" 
@@ -94,70 +81,89 @@ const PatientList = ({ newPatients = [] }) => {
         </div>
       </div>
       
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Patient Name</th>
-            <th>Contact</th>
-            <th>Age/Gender</th>
-            <th>Last Visit</th>
-            <th>WhatsApp</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredPatients.map(patient => (
-            <tr key={patient.id}>
-              <td>
-                <div style={{ fontWeight: '600' }}>{patient.name}</div>
-              </td>
-              <td>
-                <div>
-                  <div style={{ fontSize: '14px' }}>{patient.phone}</div>
-                  <div style={{ fontSize: '12px', color: '#718096' }}>{patient.email}</div>
-                </div>
-              </td>
-              <td>
-                <div>
-                  <div>{calculateAge(patient.dateOfBirth)} years</div>
-                  <div style={{ fontSize: '12px', color: '#718096' }}>{patient.gender}</div>
-                </div>
-              </td>
-              <td>{patient.lastVisit}</td>
-              <td>
-                {patient.whatsappOptIn ? (
-                  <span style={{ color: '#25d366', fontWeight: '600' }}>✅ Enabled</span>
-                ) : (
-                  <span style={{ color: '#ff6b6b', fontWeight: '600' }}>❌ Disabled</span>
-                )}
-              </td>
-              <td>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button 
-                    className="btn btn-secondary"
-                    style={{ fontSize: '12px', padding: '6px 12px' }}
-                  >
-                    👁️ View
-                  </button>
-                  <button 
-                    className="btn btn-primary"
-                    style={{ fontSize: '12px', padding: '6px 12px' }}
-                  >
-                    ✏️ Edit
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      
-      {filteredPatients.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '30px' }}>
+      {patients.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '50px' }}>
           <div style={{ fontSize: '48px', marginBottom: '10px' }}>👤</div>
-          <h3>No patients found</h3>
-          <p>Try adjusting your search criteria or add a new patient.</p>
+          <h3>No patients yet</h3>
+          <p>Add your first patient to get started.</p>
         </div>
+      ) : (
+        <>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Patient Name</th>
+                <th>Contact</th>
+                <th>Age/Gender</th>
+                <th>Last Visit</th>
+                <th>WhatsApp</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredPatients.map(patient => (
+                <tr key={patient.id}>
+                  <td>
+                    <div style={{ fontWeight: '600' }}>{patient.name}</div>
+                  </td>
+                  <td>
+                    <div>
+                      <div style={{ fontSize: '14px' }}>{patient.phone}</div>
+                      <div style={{ fontSize: '12px', color: '#718096' }}>{patient.email || 'No email'}</div>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      <div>{calculateAge(patient.dateOfBirth)} years</div>
+                      <div style={{ fontSize: '12px', color: '#718096' }}>{patient.gender || 'Not specified'}</div>
+                    </div>
+                  </td>
+                  <td>{patient.lastVisit || 'Never'}</td>
+                  <td>
+                    {patient.whatsappOptIn ? (
+                      <span style={{ color: '#25d366', fontWeight: '600' }}>✅ Enabled</span>
+                    ) : (
+                      <span style={{ color: '#ff6b6b', fontWeight: '600' }}>❌ Disabled</span>
+                    )}
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button 
+                        className="btn btn-secondary"
+                        style={{ fontSize: '12px', padding: '6px 12px' }}
+                        onClick={() => handleEdit(patient)}
+                      >
+                        👁️ View
+                      </button>
+                      <button 
+                        className="btn btn-primary"
+                        style={{ fontSize: '12px', padding: '6px 12px' }}
+                        onClick={() => handleEdit(patient)}
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button 
+                        className="btn btn-danger"
+                        style={{ fontSize: '12px', padding: '6px 12px', backgroundColor: '#ff6b6b', color: 'white' }}
+                        onClick={() => handleDelete(patient.id)}
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          
+          {filteredPatients.length === 0 && patients.length > 0 && (
+            <div style={{ textAlign: 'center', padding: '30px' }}>
+              <div style={{ fontSize: '48px', marginBottom: '10px' }}>🔍</div>
+              <h3>No patients found</h3>
+              <p>Try adjusting your search criteria.</p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

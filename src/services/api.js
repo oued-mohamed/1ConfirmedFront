@@ -1,4 +1,4 @@
-// src/services/api.js - FINAL VERSION with complete error handling
+// src/services/api.js - FIXED VERSION with consistent auth handling
 
 // Determine API URL based on environment
 const getApiUrl = () => {
@@ -23,10 +23,20 @@ console.log('- Development Mode:', DEVELOPMENT_MODE);
 
 // Track known endpoints that don't exist in the backend yet
 const unavailableEndpoints = [
-  '/messages/templates',
-  '/messages/history',
   '/whatsapp/send',
   '/settings/test-whatsapp'
+  // REMOVED: '/messages/templates', '/messages/history', '/doctors', '/appointments'
+  // These now have real endpoints!
+];
+
+// Endpoints that should ALWAYS use real API (never mock)
+const forceRealEndpoints = [
+  '/patients',
+  '/auth',           // FIXED - Force real API for ALL auth endpoints
+  '/doctors',        
+  '/appointments',   
+  '/messages',       
+  '/analytics'       
 ];
 
 class ApiService {
@@ -61,6 +71,15 @@ class ApiService {
   // Check if an endpoint is available or should be mocked
   shouldUseMockData(endpoint) {
     if (DEVELOPMENT_MODE) return true;
+    
+    // NEVER use mock data for forced real endpoints
+    const isForceReal = forceRealEndpoints.some(realEndpoint => 
+      endpoint.includes(realEndpoint)
+    );
+    if (isForceReal) {
+      console.log(`Forcing real API for endpoint: ${endpoint}`);
+      return false;
+    }
     
     // Check if this endpoint is in our list of known unavailable endpoints
     return unavailableEndpoints.some(unavailableEndpoint => 
@@ -106,8 +125,12 @@ class ApiService {
       }
 
       if (!response.ok) {
-        // If we get a 404, add this endpoint to our list of unavailable endpoints
-        if (response.status === 404) {
+        // DON'T add forced real endpoints to unavailable list even if they fail
+        const isForceReal = forceRealEndpoints.some(realEndpoint => 
+          endpoint.includes(realEndpoint)
+        );
+        
+        if (response.status === 404 && !isForceReal) {
           const unavailableEndpoint = endpoint.split('?')[0]; // Remove query params
           if (!unavailableEndpoints.includes(unavailableEndpoint)) {
             unavailableEndpoints.push(unavailableEndpoint);
@@ -147,7 +170,7 @@ class ApiService {
     }
   }
 
-  // Test connection method - UPDATED for Railway
+  // Test connection method
   async testConnection() {
     if (DEVELOPMENT_MODE) {
       console.log('Development mode: Skipping connection test');
@@ -178,17 +201,17 @@ class ApiService {
     }
   }
 
-  // Authentication endpoints
+  // Authentication endpoints - FIXED to always use real API
   async login(email, password) {
-    if (this.shouldUseMockData('/auth/login')) {
-      return this.mockLogin(email, password);
-    }
+    console.log('ApiService: Real login called with:', email);
     
     try {
       const response = await this.request('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
+      
+      console.log('ApiService: Real login response:', response);
       
       // Handle different response formats
       if (response.token) {
@@ -199,23 +222,21 @@ class ApiService {
       
       return response;
     } catch (error) {
-      // For network errors or if we're using mock data
-      if (error.message === 'Using mock data' || error.message.includes('Network error')) {
-        console.log('Using mock login');
+      console.error('ApiService: Real login error:', error);
+      
+      // For network errors, fallback to mock only if endpoint is truly unavailable
+      if (error.message.includes('Network error') || error.message.includes('fetch')) {
+        console.log('Network error detected, falling back to mock login');
         return this.mockLogin(email, password);
       }
       
-      // Don't redirect on login errors
+      // Don't use mock for other errors (like invalid credentials)
       throw error;
     }
   }
 
-  // Register function
+  // Register function - FIXED to always use real API first
   async register(userData) {
-    if (this.shouldUseMockData('/auth/register')) {
-      return this.mockRegister(userData);
-    }
-    
     console.log('ApiService: Real register called with:', userData);
     
     try {
@@ -237,17 +258,18 @@ class ApiService {
     } catch (error) {
       console.error('ApiService: Real register error:', error);
       
-      // For network errors or if we're using mock data
-      if (error.message === 'Using mock data' || error.message.includes('Network error')) {
-        console.log('Using mock register');
+      // For network errors, fallback to mock only if endpoint is truly unavailable
+      if (error.message.includes('Network error') || error.message.includes('fetch')) {
+        console.log('Network error detected, falling back to mock register');
         return this.mockRegister(userData);
       }
       
+      // Don't use mock for other errors (like user already exists)
       throw error;
     }
   }
 
-  // Mock register for development
+  // Mock register for development/fallback only
   async mockRegister(userData) {
     console.log('ApiService: Mock register called with:', userData);
     
@@ -286,7 +308,7 @@ class ApiService {
     };
   }
 
-  // Mock login for development
+  // Mock login for development/fallback only
   async mockLogin(email, password) {
     console.log('ApiService: Mock login called with:', email);
     
@@ -315,32 +337,29 @@ class ApiService {
 
   async logout() {
     try {
-      if (!this.shouldUseMockData('/auth/logout')) {
-        await this.request('/auth/logout', { method: 'POST' });
-      } else {
-        console.log('Mock logout');
-      }
+      // Always try real API first for logout
+      await this.request('/auth/logout', { method: 'POST' });
+      console.log('Real logout successful');
     } catch (error) {
       // Ignore logout errors, just clear token
-      console.warn('Logout request failed:', error);
+      console.warn('Logout request failed (this is normal):', error.message);
     } finally {
       this.setToken(null);
     }
   }
 
-  // Get current user
+  // Get current user - FIXED to always use real API
   async getCurrentUser() {
-    if (this.shouldUseMockData('/auth/me')) {
-      console.log('Mock get current user');
-      return { 
-        id: 1, 
-        name: 'Dr. Sarah Johnson',
-        email: 'sarah@example.com',
-        role: 'doctor',
-        avatar: '👩‍⚕️'
-      };
+    try {
+      return await this.request('/auth/me');
+    } catch (error) {
+      console.error('Get current user failed:', error);
+      // If token is invalid, clear it
+      if (error.message.includes('Invalid or expired token')) {
+        this.setToken(null);
+      }
+      throw error;
     }
-    return this.request('/auth/me');
   }
 
   // Update profile
@@ -379,96 +398,59 @@ class ApiService {
     });
   }
 
-  // Appointments
+  // Appointments - NOW USING REAL API
   async getAppointments(params = {}) {
-    if (this.shouldUseMockData('/appointments')) {
-      console.log('Mock get appointments');
-      return { 
-        data: [
-          {
-            id: 1,
-            patient: 'John Smith',
-            phone: '+1234567890',
-            doctor: 'Dr. Johnson',
-            department: 'Cardiology',
-            date: '2024-01-15',
-            time: '09:00',
-            status: 'confirmed',
-            whatsappSent: true
-          },
-          {
-            id: 2,
-            patient: 'Sarah Wilson',
-            phone: '+1234567891',
-            doctor: 'Dr. Brown',
-            department: 'Dermatology',
-            date: '2024-01-15',
-            time: '10:30',
-            status: 'pending',
-            whatsappSent: false
-          },
-          {
-            id: 3,
-            patient: 'Mike Davis',
-            phone: '+1234567892',
-            doctor: 'Dr. Lee',
-            department: 'Orthopedics',
-            date: '2024-01-16',
-            time: '14:00',
-            status: 'confirmed',
-            whatsappSent: true
-          }
-        ]
-      };
-    }
+    console.log('Getting appointments from real API');
     const queryString = new URLSearchParams(params).toString();
     return this.request(`/appointments?${queryString}`);
   }
 
   async createAppointment(appointmentData) {
-    if (this.shouldUseMockData('/appointments')) {
-      console.log('Mock create appointment:', appointmentData);
-      return { 
-        success: true, 
-        data: {
-          id: Date.now(),
-          ...appointmentData,
-          status: 'pending',
-          createdAt: new Date().toISOString()
-        },
-        message: 'Appointment created (Demo Mode)' 
-      };
-    }
+    console.log('Creating appointment with real API:', appointmentData);
+    
+    // Transform the data to match backend expectations
+    const transformedData = {
+      patient: appointmentData.patientName || appointmentData.patient,  // Map patientName to patient
+      phone: appointmentData.phone,
+      doctor: appointmentData.doctor,
+      department: appointmentData.department,
+      date: appointmentData.date,
+      time: appointmentData.time,
+      status: appointmentData.status || 'pending'
+    };
+    
+    console.log('Transformed appointment data:', transformedData);
+    
     return this.request('/appointments', {
       method: 'POST',
-      body: JSON.stringify(appointmentData),
+      body: JSON.stringify(transformedData),
     });
   }
 
   async updateAppointment(id, appointmentData) {
-    if (this.shouldUseMockData('/appointments')) {
-      console.log('Mock update appointment:', id, appointmentData);
-      return { 
-        success: true, 
-        data: {
-          id,
-          ...appointmentData,
-          updatedAt: new Date().toISOString()
-        },
-        message: 'Appointment updated (Demo Mode)' 
-      };
-    }
+    console.log('Updating appointment with real API:', id, appointmentData);
+    
+    // Transform the data to match backend expectations
+    const transformedData = {
+      patient: appointmentData.patientName || appointmentData.patient,  // Map patientName to patient
+      phone: appointmentData.phone,
+      doctor: appointmentData.doctor,
+      department: appointmentData.department,
+      date: appointmentData.date,
+      time: appointmentData.time,
+      status: appointmentData.status || 'pending'
+    };
+    
+    console.log('Transformed appointment update data:', transformedData);
+    
     return this.request(`/appointments/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(appointmentData),
+      body: JSON.stringify(transformedData),
     });
   }
 
   async deleteAppointment(id) {
-    if (this.shouldUseMockData('/appointments')) {
-      console.log('Mock delete appointment:', id);
-      return { success: true, message: 'Appointment deleted (Demo Mode)' };
-    }
+    console.log('Deleting appointment with real API:', id);
     return this.request(`/appointments/${id}`, {
       method: 'DELETE',
     });
@@ -485,62 +467,15 @@ class ApiService {
     });
   }
 
-  // Patients
+  // Patients - NOW USING REAL API
   async getPatients(params = {}) {
-    if (this.shouldUseMockData('/patients')) {
-      console.log('Mock get patients');
-      return { 
-        data: [
-          {
-            id: 1,
-            name: 'John Smith',
-            phone: '+1234567890',
-            email: 'john@email.com',
-            dateOfBirth: '1985-03-15',
-            gender: 'Male',
-            lastVisit: '2024-01-10',
-            whatsappOptIn: true
-          },
-          {
-            id: 2,
-            name: 'Sarah Wilson',
-            phone: '+1234567891',
-            email: 'sarah@email.com',
-            dateOfBirth: '1990-07-22',
-            gender: 'Female',
-            lastVisit: '2024-01-08',
-            whatsappOptIn: true
-          },
-          {
-            id: 3,
-            name: 'Mike Davis',
-            phone: '+1234567892',
-            email: 'mike@email.com',
-            dateOfBirth: '1978-11-03',
-            gender: 'Male',
-            lastVisit: '2024-01-05',
-            whatsappOptIn: false
-          }
-        ]
-      };
-    }
+    console.log('Getting patients from real API');
     const queryString = new URLSearchParams(params).toString();
     return this.request(`/patients?${queryString}`);
   }
 
   async createPatient(patientData) {
-    if (this.shouldUseMockData('/patients')) {
-      console.log('Mock create patient:', patientData);
-      return { 
-        success: true, 
-        data: {
-          id: Date.now(),
-          ...patientData,
-          createdAt: new Date().toISOString()
-        },
-        message: 'Patient created (Demo Mode)' 
-      };
-    }
+    console.log('Creating patient with real API:', patientData);
     return this.request('/patients', {
       method: 'POST',
       body: JSON.stringify(patientData),
@@ -548,18 +483,7 @@ class ApiService {
   }
 
   async updatePatient(id, patientData) {
-    if (this.shouldUseMockData('/patients')) {
-      console.log('Mock update patient:', id, patientData);
-      return { 
-        success: true, 
-        data: {
-          id,
-          ...patientData,
-          updatedAt: new Date().toISOString()
-        },
-        message: 'Patient updated (Demo Mode)' 
-      };
-    }
+    console.log('Updating patient with real API:', id, patientData);
     return this.request(`/patients/${id}`, {
       method: 'PUT',
       body: JSON.stringify(patientData),
@@ -567,207 +491,100 @@ class ApiService {
   }
 
   async deletePatient(id) {
-    if (this.shouldUseMockData('/patients')) {
-      console.log('Mock delete patient:', id);
-      return { success: true, message: 'Patient deleted (Demo Mode)' };
-    }
+    console.log('Deleting patient with real API:', id);
     return this.request(`/patients/${id}`, {
       method: 'DELETE',
     });
   }
 
-  // Doctors
+  // Doctors - UPDATED FOR BETTER COMPATIBILITY
   async getDoctors(params = {}) {
-    if (this.shouldUseMockData('/doctors')) {
-      console.log('Mock get doctors');
-      return { 
-        data: [
-          {
-            id: 1,
-            name: 'Dr. Sarah Johnson',
-            specialization: 'Cardiology',
-            department: 'Cardiology',
-            phone: '+1234567890',
-            email: 'sarah.johnson@hospital.com',
-            workingHours: '9:00 AM - 5:00 PM',
-            status: 'active'
-          },
-          {
-            id: 2,
-            name: 'Dr. Michael Brown',
-            specialization: 'Dermatology',
-            department: 'Dermatology',
-            phone: '+1234567891',
-            email: 'michael.brown@hospital.com',
-            workingHours: '10:00 AM - 6:00 PM',
-            status: 'active'
-          },
-          {
-            id: 3,
-            name: 'Dr. Emily Lee',
-            specialization: 'Orthopedics',
-            department: 'Orthopedics',
-            phone: '+1234567892',
-            email: 'emily.lee@hospital.com',
-            workingHours: '8:00 AM - 4:00 PM',
-            status: 'on_leave'
-          }
-        ]
-      };
-    }
+    console.log('Getting doctors from real API');
     const queryString = new URLSearchParams(params).toString();
     return this.request(`/doctors?${queryString}`);
   }
 
+  // UPDATED: Enhanced createDoctor method with better data transformation
   async createDoctor(doctorData) {
-    if (this.shouldUseMockData('/doctors')) {
-      console.log('Mock create doctor:', doctorData);
-      return { 
-        success: true, 
-        data: {
-          id: Date.now(),
-          ...doctorData,
-          createdAt: new Date().toISOString()
-        },
-        message: 'Doctor created (Demo Mode)' 
-      };
-    }
+    console.log('Creating doctor with real API:', doctorData);
+    
+    // Transform the data to ensure compatibility with backend
+    // The backend now accepts both formats, but let's be explicit
+    const transformedData = {
+      // If we have firstName and lastName, combine them into name
+      ...(doctorData.firstName && doctorData.lastName ? {
+        name: `${doctorData.firstName} ${doctorData.lastName}`,
+        firstName: doctorData.firstName,
+        lastName: doctorData.lastName
+      } : {
+        name: doctorData.name
+      }),
+      specialization: doctorData.specialization,
+      department: doctorData.department,
+      phone: doctorData.phone,
+      email: doctorData.email || '',
+      licenseNumber: doctorData.licenseNumber || '',
+      workingHours: doctorData.workingHours || '',
+      notes: doctorData.notes || '',
+      status: doctorData.status || 'active'
+    };
+    
+    console.log('Transformed doctor data:', transformedData);
+    
     return this.request('/doctors', {
       method: 'POST',
-      body: JSON.stringify(doctorData),
+      body: JSON.stringify(transformedData),
     });
   }
 
+  // UPDATED: Enhanced updateDoctor method with better data transformation
   async updateDoctor(id, doctorData) {
-    if (this.shouldUseMockData('/doctors')) {
-      console.log('Mock update doctor:', id, doctorData);
-      return { 
-        success: true, 
-        data: {
-          id,
-          ...doctorData,
-          updatedAt: new Date().toISOString()
-        },
-        message: 'Doctor updated (Demo Mode)' 
-      };
-    }
+    console.log('Updating doctor with real API:', id, doctorData);
+    
+    // Transform the data to ensure compatibility with backend
+    const transformedData = {
+      // If we have firstName and lastName, combine them into name
+      ...(doctorData.firstName && doctorData.lastName ? {
+        name: `${doctorData.firstName} ${doctorData.lastName}`,
+        firstName: doctorData.firstName,
+        lastName: doctorData.lastName
+      } : doctorData.name ? {
+        name: doctorData.name
+      } : {}),
+      ...(doctorData.specialization && { specialization: doctorData.specialization }),
+      ...(doctorData.department && { department: doctorData.department }),
+      ...(doctorData.phone && { phone: doctorData.phone }),
+      ...(doctorData.email !== undefined && { email: doctorData.email }),
+      ...(doctorData.licenseNumber !== undefined && { licenseNumber: doctorData.licenseNumber }),
+      ...(doctorData.workingHours !== undefined && { workingHours: doctorData.workingHours }),
+      ...(doctorData.notes !== undefined && { notes: doctorData.notes }),
+      ...(doctorData.status && { status: doctorData.status })
+    };
+    
+    console.log('Transformed doctor update data:', transformedData);
+    
     return this.request(`/doctors/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(doctorData),
+      body: JSON.stringify(transformedData),
     });
   }
 
   async deleteDoctor(id) {
-    if (this.shouldUseMockData('/doctors')) {
-      console.log('Mock delete doctor:', id);
-      return { success: true, message: 'Doctor deleted (Demo Mode)' };
-    }
+    console.log('Deleting doctor with real API:', id);
     return this.request(`/doctors/${id}`, {
       method: 'DELETE',
     });
   }
 
-  // Messages
+  // Messages - NOW USING REAL API
   async getMessageTemplates(params = {}) {
-    if (this.shouldUseMockData('/messages/templates')) {
-      console.log('Mock get message templates');
-      return { 
-        data: [
-          {
-            id: 1,
-            name: 'Appointment Reminder',
-            category: 'Reminder',
-            content: 'Hi {{patient_name}}, this is a reminder about your appointment with {{doctor_name}} on {{date}} at {{time}}. Please confirm by replying YES.',
-            variables: ['patient_name', 'doctor_name', 'date', 'time'],
-            status: 'active',
-            lastUsed: '2024-01-15',
-            usageCount: 156,
-            responseRate: '94%'
-          },
-          {
-            id: 2,
-            name: 'Appointment Confirmation',
-            category: 'Confirmation',
-            content: 'Dear {{patient_name}}, your appointment with {{doctor_name}} has been confirmed for {{date}} at {{time}}. Location: {{location}}',
-            variables: ['patient_name', 'doctor_name', 'date', 'time', 'location'],
-            status: 'active',
-            lastUsed: '2024-01-14',
-            usageCount: 89,
-            responseRate: '98%'
-          },
-          {
-            id: 3,
-            name: 'Cancellation Notice',
-            category: 'Cancellation',
-            content: 'Hi {{patient_name}}, we regret to inform you that your appointment on {{date}} has been cancelled. Please call us to reschedule.',
-            variables: ['patient_name', 'date'],
-            status: 'draft',
-            lastUsed: '2024-01-10',
-            usageCount: 23,
-            responseRate: '76%'
-          },
-          {
-            id: 4,
-            name: 'Follow-up Reminder',
-            category: 'Follow-up',
-            content: 'Hello {{patient_name}}, Dr. {{doctor_name}} recommends a follow-up appointment. Please call us at {{phone}} to schedule.',
-            variables: ['patient_name', 'doctor_name', 'phone'],
-            status: 'active',
-            lastUsed: '2024-01-12',
-            usageCount: 67,
-            responseRate: '85%'
-          },
-          {
-            id: 5,
-            name: 'Prescription Ready',
-            category: 'Notification',
-            content: 'Your prescription is ready for pickup at {{pharmacy_name}}. Pickup hours: {{hours}}. Questions? Call {{phone}}.',
-            variables: ['pharmacy_name', 'hours', 'phone'],
-            status: 'active',
-            lastUsed: '2024-01-13',
-            usageCount: 134,
-            responseRate: '92%'
-          },
-          {
-            id: 6,
-            name: 'Test Results Available',
-            category: 'Notification',
-            content: 'Hi {{patient_name}}, your test results are now available. Please log into your patient portal or call us at {{phone}}.',
-            variables: ['patient_name', 'phone'],
-            status: 'active',
-            lastUsed: '2024-01-11',
-            usageCount: 45,
-            responseRate: '88%'
-          }
-        ]
-      };
-    }
+    console.log('Getting message templates from real API');
     const queryString = new URLSearchParams(params).toString();
     return this.request(`/messages/templates?${queryString}`);
   }
 
   async createMessageTemplate(templateData) {
-    if (this.shouldUseMockData('/messages/templates')) {
-      console.log('Mock create message template:', templateData);
-      await new Promise(resolve => setTimeout(resolve, 500)); // Add a small delay for realism
-      
-      return { 
-        success: true, 
-        data: {
-          id: Date.now(),
-          name: templateData.name,
-          category: templateData.category,
-          content: templateData.content,
-          variables: templateData.variables || [],
-          status: 'active',
-          lastUsed: new Date().toISOString().split('T')[0],
-          usageCount: 0,
-          responseRate: '0%',
-          createdAt: new Date().toISOString()
-        },
-        message: 'Template created successfully (Demo Mode)' 
-      };
-    }
+    console.log('Creating message template with real API:', templateData);
     return this.request('/messages/templates', {
       method: 'POST',
       body: JSON.stringify(templateData),
@@ -775,18 +592,7 @@ class ApiService {
   }
 
   async updateMessageTemplate(id, templateData) {
-    if (this.shouldUseMockData('/messages/templates')) {
-      console.log('Mock update message template:', id, templateData);
-      return { 
-        success: true, 
-        data: {
-          id,
-          ...templateData,
-          updatedAt: new Date().toISOString()
-        },
-        message: 'Template updated (Demo Mode)' 
-      };
-    }
+    console.log('Updating message template with real API:', id, templateData);
     return this.request(`/messages/templates/${id}`, {
       method: 'PUT',
       body: JSON.stringify(templateData),
@@ -794,10 +600,7 @@ class ApiService {
   }
 
   async deleteMessageTemplate(id) {
-    if (this.shouldUseMockData('/messages/templates')) {
-      console.log('Mock delete message template:', id);
-      return { success: true, message: 'Template deleted (Demo Mode)' };
-    }
+    console.log('Deleting message template with real API:', id);
     return this.request(`/messages/templates/${id}`, {
       method: 'DELETE',
     });
@@ -815,63 +618,14 @@ class ApiService {
   }
 
   async getMessageHistory(params = {}) {
-    if (this.shouldUseMockData('/messages/history')) {
-      console.log('Mock get message history');
-      return { 
-        data: [
-          {
-            id: 1,
-            patient: 'John Smith',
-            phone: '+1234567890',
-            template: 'Appointment Reminder',
-            content: 'Hi John Smith, this is a reminder about your appointment with Dr. Johnson...',
-            sentAt: '2024-01-15 09:00:00',
-            status: 'delivered',
-            response: 'YES',
-            responseAt: '2024-01-15 09:15:00'
-          },
-          {
-            id: 2,
-            patient: 'Sarah Wilson',
-            phone: '+1234567891',
-            template: 'Appointment Confirmation',
-            content: 'Dear Sarah Wilson, your appointment with Dr. Brown has been confirmed...',
-            sentAt: '2024-01-15 08:30:00',
-            status: 'read',
-            response: null,
-            responseAt: null
-          },
-          {
-            id: 3,
-            patient: 'Mike Davis',
-            phone: '+1234567892',
-            template: 'Appointment Reminder',
-            content: 'Hi Mike Davis, this is a reminder about your appointment...',
-            sentAt: '2024-01-14 16:00:00',
-            status: 'failed',
-            response: null,
-            responseAt: null
-          }
-        ]
-      };
-    }
+    console.log('Getting message history from real API');
     const queryString = new URLSearchParams(params).toString();
     return this.request(`/messages/history?${queryString}`);
   }
 
-  // Analytics
+  // Analytics - NOW USING REAL API
   async getDashboardStats() {
-    if (this.shouldUseMockData('/analytics/dashboard')) {
-      console.log('Mock get dashboard stats');
-      return { 
-        totalPatients: 124,
-        totalAppointments: 56,
-        upcomingAppointments: 12,
-        messagesSent: 245,
-        messageDeliveryRate: '98%',
-        responseRate: '76%'
-      };
-    }
+    console.log('Getting dashboard stats from real API');
     return this.request('/analytics/dashboard');
   }
 
