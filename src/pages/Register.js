@@ -14,9 +14,7 @@ const Register = () => {
     password: '',
     confirmPassword: '',
     role: 'doctor',
-    specialization: '',
     phone: '',
-    licenseNumber: ''
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -25,21 +23,7 @@ const Register = () => {
   const { register, error } = useAuth();
   const navigate = useNavigate();
 
-  // Check backend connectivity on component mount
-  React.useEffect(() => {
-    checkBackendConnection();
-  }, []);
-
-  const checkBackendConnection = async () => {
-    try {
-      await ApiService.testConnection();
-      setBackendStatus('connected');
-    } catch (error) {
-      console.error('Backend connection failed:', error);
-      setBackendStatus('disconnected');
-      setUseMockMode(true);
-    }
-  };
+ 
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -84,15 +68,7 @@ const Register = () => {
       newErrors.phone = 'Phone number is required';
     }
 
-    // Role-specific validation
-    if (formData.role === 'doctor') {
-      if (!formData.specialization.trim()) {
-        newErrors.specialization = 'Specialization is required for doctors';
-      }
-      if (!formData.licenseNumber.trim()) {
-        newErrors.licenseNumber = 'License number is required for doctors';
-      }
-    }
+   
 
     setErrors(newErrors);
     console.log('Validation errors:', newErrors);
@@ -128,10 +104,7 @@ const Register = () => {
           password: formData.password,
           role: formData.role,
           phone: formData.phone,
-          ...(formData.role === 'doctor' && {
-            specialization: formData.specialization,
-            licenseNumber: formData.licenseNumber
-          })
+        
         };
 
         console.log('Attempting registration with data:', registrationData);
@@ -148,40 +121,6 @@ const Register = () => {
     }
   };
 
-  const BackendStatusIndicator = () => {
-    if (backendStatus === 'checking') {
-      return (
-        <div className="status-indicator checking">
-          <LoadingSpinner size="sm" />
-          <span>Checking backend connection...</span>
-        </div>
-      );
-    }
-
-    if (backendStatus === 'connected') {
-      return (
-        <div className="status-indicator connected">
-          <span>🟢 <strong>Backend Connected</strong></span>
-          <small>Connected to: {process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}</small>
-        </div>
-      );
-    }
-
-    return (
-      <div className="status-indicator disconnected">
-        <span>🔴 <strong>Backend Disconnected</strong></span>
-        <small>Cannot connect to: {process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}</small>
-        <label className="demo-mode-toggle">
-          <input
-            type="checkbox"
-            checked={useMockMode}
-            onChange={(e) => setUseMockMode(e.target.checked)}
-          />
-          Use demo mode (no backend required)
-        </label>
-      </div>
-    );
-  };
 
   return (
     <div className="register-page">
@@ -197,7 +136,6 @@ const Register = () => {
           <h2>Create Your Account</h2>
           <p>Join HealthPing to manage appointments with WhatsApp integration</p>
           
-          <BackendStatusIndicator />
           
           {error && <div className="error-message">{error}</div>}
           
@@ -261,7 +199,7 @@ const Register = () => {
                 className={`form-input ${errors.email ? 'error' : ''}`}
                 value={formData.email}
                 onChange={handleChange}
-                placeholder={useMockMode ? "demo@healthping.com" : "Enter your email"}
+                placeholder="Enter your email"
                 disabled={loading}
               />
               {errors.email && <span className="error-text">{errors.email}</span>}
@@ -330,48 +268,8 @@ const Register = () => {
             </div>
 
             {/* THIS IS THE MISSING SECTION - DOCTOR FIELDS */}
-            {formData.role === 'doctor' && (
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Specialization *</label>
-                  <input
-                    type="text"
-                    name="specialization"
-                    className={`form-input ${errors.specialization ? 'error' : ''}`}
-                    value={formData.specialization}
-                    onChange={handleChange}
-                    placeholder="e.g., Cardiology"
-                    disabled={loading}
-                  />
-                  {errors.specialization && <span className="error-text">{errors.specialization}</span>}
-                </div>
+            
                 
-                <div className="form-group">
-                  <label className="form-label">License Number *</label>
-                  <input
-                    type="text"
-                    name="licenseNumber"
-                    className={`form-input ${errors.licenseNumber ? 'error' : ''}`}
-                    value={formData.licenseNumber}
-                    onChange={handleChange}
-                    placeholder="Medical license number"
-                    disabled={loading}
-                  />
-                  {errors.licenseNumber && <span className="error-text">{errors.licenseNumber}</span>}
-                </div>
-              </div>
-            )}
-
-            {useMockMode && (
-              <div className="demo-notice">
-                <div className="demo-notice-header">
-                  🎯 Demo Mode Active
-                </div>
-                <div className="demo-notice-text">
-                  Registration will work without backend connection
-                </div>
-              </div>
-            )}
             
             <button 
               type="submit" 
@@ -385,35 +283,11 @@ const Register = () => {
                   Creating Account...
                 </>
               ) : (
-                `👤 Create Account ${useMockMode ? '(Demo)' : ''}`
+                '👤 Create Account'
               )}
             </button>
             
-            {/* Debug button for testing */}
-            <button 
-              type="button"
-              onClick={() => {
-                console.log('=== DEBUG INFO ===');
-                console.log('Form data:', formData);
-                console.log('Errors:', errors);
-                console.log('Validation result:', validateForm());
-                console.log('Backend status:', backendStatus);
-                console.log('Mock mode:', useMockMode);
-                console.log('Loading:', loading);
-              }}
-              style={{ 
-                width: '100%', 
-                marginTop: '10px', 
-                padding: '8px',
-                background: '#f0f0f0',
-                border: '1px solid #ccc',
-                borderRadius: '8px',
-                fontSize: '12px',
-                cursor: 'pointer'
-              }}
-            >
-              🐛 Debug: Check Form State (Click Me First!)
-            </button>
+
           </form>
           
           <div className="register-footer">

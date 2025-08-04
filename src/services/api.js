@@ -1,4 +1,4 @@
-// src/services/api.js - FIXED VERSION with consistent auth handling
+// src/services/api.js 
 
 // Determine API URL based on environment
 const getApiUrl = () => {
@@ -308,32 +308,85 @@ class ApiService {
     };
   }
 
-  // Mock login for development/fallback only
-  async mockLogin(email, password) {
-    console.log('ApiService: Mock login called with:', email);
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Mock user data
-    const mockUser = {
-      id: 1,
-      name: 'Dr. Sarah Johnson',
-      email: email,
-      role: 'doctor',
-      avatar: '👩‍⚕️'
-    };
-    
-    const mockToken = 'mock-jwt-token-' + Date.now();
-    this.setToken(mockToken);
-    
-    return {
-      success: true,
-      token: mockToken,
-      user: mockUser,
-      message: 'Login successful (Demo Mode)'
-    };
+  // ✅ FIXED: Mock login with proper credential validation
+async mockLogin(email, password) {
+  console.log('ApiService: Mock login called with:', email);
+  
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  // ✅ VALID CREDENTIALS LIST
+  const validCredentials = [
+    { 
+      email: 'admin@healthping.com', 
+      password: 'admin123',
+      user: {
+        id: 1,
+        name: 'Dr. Admin Johnson',
+        email: 'admin@healthping.com',
+        role: 'admin',
+        avatar: '👨‍💼'
+      }
+    },
+    { 
+      email: 'demo@healthping.com', 
+      password: 'demo123',
+      user: {
+        id: 2,
+        name: 'Dr. Sarah Johnson',
+        email: 'demo@healthping.com',
+        role: 'doctor',
+        avatar: '👩‍⚕️'
+      }
+    },
+    { 
+      email: 'doctor@healthping.com', 
+      password: 'doctor123',
+      user: {
+        id: 3,
+        name: 'Dr. Mike Wilson',
+        email: 'doctor@healthping.com',
+        role: 'doctor',
+        avatar: '👨‍⚕️'
+      }
+    },
+    { 
+      email: 'nurse@healthping.com', 
+      password: 'nurse123',
+      user: {
+        id: 4,
+        name: 'Nurse Emma Davis',
+        email: 'nurse@healthping.com',
+        role: 'nurse',
+        avatar: '👩‍⚕️'
+      }
+    }
+  ];
+  
+  // ✅ VALIDATE CREDENTIALS
+  const validUser = validCredentials.find(
+    cred => cred.email === email && cred.password === password
+  );
+  
+  // ✅ THROW ERROR IF INVALID CREDENTIALS
+  if (!validUser) {
+    console.log('Mock login failed: Invalid credentials for', email);
+    throw new Error('Invalid email or password');
   }
+  
+  // ✅ ONLY RETURN SUCCESS FOR VALID CREDENTIALS
+  const mockToken = 'mock-jwt-token-' + Date.now();
+  this.setToken(mockToken);
+  
+  console.log('Mock login successful for:', validUser.user.name);
+  
+  return {
+    success: true,
+    token: mockToken,
+    user: validUser.user,
+    message: 'Login successful (Demo Mode)'
+  };
+}
 
   async logout() {
     try {
