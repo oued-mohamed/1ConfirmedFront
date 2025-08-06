@@ -1,9 +1,39 @@
-// src/pages/Home.js
-import React from 'react';
+// src/pages/Home.js - Remove Contact Cards, Keep Contact Form
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import './Home.css';
 
 const Home = () => {
+  const [contactForm, setContactForm] = useState({
+    name: '',
+    email: '',
+    subject: '',
+    message: ''
+  });
+
+  const handleContactChange = (e) => {
+    const { name, value } = e.target;
+    setContactForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleContactSubmit = (e) => {
+    e.preventDefault();
+    // Handle form submission here
+    console.log('Contact form submitted:', contactForm);
+    alert('Thank you for your message! We\'ll get back to you soon.');
+    
+    // Reset form
+    setContactForm({
+      name: '',
+      email: '',
+      subject: '',
+      message: ''
+    });
+  };
+
   return (
     <div className="home">
       <header className="home-header">
@@ -82,7 +112,7 @@ const Home = () => {
         </div>
       </section>
 
-      <section className="dashboard-preview">
+      <section className="dashboard-preview" id="about">
         <div className="container">
           <h2>Your Health Dashboard</h2>
           <div className="preview-container">
@@ -108,9 +138,124 @@ const Home = () => {
           </div>
         </div>
       </section>
+
+      {/* ✅ CONTACT SECTION - FORM ONLY (NO CONTACT CARDS) */}
+      <section className="contact" id="contact">
+        <div className="container">
+          <h2>Get In Touch</h2>
+          <p className="contact-subtitle">Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.</p>
+          
+          <div className="contact-content">
+            <div className="contact-form-container">
+              <form className="contact-form" onSubmit={handleContactSubmit}>
+                <div className="form-row">
+                  <div className="form-group">
+                    <input
+                      type="text"
+                      name="name"
+                      placeholder="Your Name"
+                      value={contactForm.name}
+                      onChange={handleContactChange}
+                      required
+                      className="form-input"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <input
+                      type="email"
+                      name="email"
+                      placeholder="Your Email"
+                      value={contactForm.email}
+                      onChange={handleContactChange}
+                      required
+                      className="form-input"
+                    />
+                  </div>
+                </div>
+                
+                <div className="form-group">
+                  <input
+                    type="text"
+                    name="subject"
+                    placeholder="Subject"
+                    value={contactForm.subject}
+                    onChange={handleContactChange}
+                    required
+                    className="form-input"
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <textarea
+                    name="message"
+                    placeholder="Your Message"
+                    value={contactForm.message}
+                    onChange={handleContactChange}
+                    required
+                    className="form-textarea"
+                    rows="6"
+                  ></textarea>
+                </div>
+                
+                <button type="submit" className="btn-primary contact-submit">
+                   Send Message
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ✅ FOOTER SECTION */}
+      <footer className="footer">
+        <div className="container">
+          <div className="footer-content">
+            <div className="footer-section">
+              <div className="logo">
+                <div className="logo-icon">🏥</div>
+                HealthPing
+              </div>
+              <p>Making healthcare appointments simple and reliable with WhatsApp integration.</p>
+            </div>
+            
+            <div className="footer-section">
+              <h4>Quick Links</h4>
+              <ul>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#contact">Contact</a></li>
+                <li><Link to="/login">Login</Link></li>
+              </ul>
+            </div>
+            
+            <div className="footer-section">
+              <h4>Support</h4>
+              <ul>
+                <li><a href="#help">Help Center</a></li>
+                <li><a href="#privacy">Privacy Policy</a></li>
+                <li><a href="#terms">Terms of Service</a></li>
+                <li><a href="#faq">FAQ</a></li>
+              </ul>
+            </div>
+            
+            <div className="footer-section">
+              <h4>Follow Us</h4>
+              <div className="social-links">
+                <a href="#facebook" className="social-link">📘</a>
+                <a href="#twitter" className="social-link">🐦</a>
+                <a href="#linkedin" className="social-link">💼</a>
+                <a href="#instagram" className="social-link">📷</a>
+              </div>
+            </div>
+          </div>
+          
+          <div className="footer-bottom">
+            <p>&copy; 2024 HealthPing. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
 
 export default Home;
-
